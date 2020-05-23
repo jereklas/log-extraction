@@ -27,82 +27,97 @@ const useStyles = makeStyles({
   },
 });
 
-// const populateRaids =  async () => {
-//   const res =  await request({
-//     url: '/reports/guild/RIVAL/Fairbanks/US',
-//     // url: '/report/fights/za4DHnM91BvyhkPr',
-//     // url: '/reports/user/Ragemonster',
-//     // url: '/rankings/character/Ragemonster/Fairbanks/US',
-//   });
-
-//     Object.values(res).forEach(raid => {
-//       raidsById[raid.id] = raid;
-//     });
-// }
-
 const App = observer(() => {
   const classes = useStyles();
   const { raidStore, zoneStore } = useStores();
 
-  return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      <div
-        style={{
-          width: "300px",
-          overflow: "auto",
-          borderRight: "2px solid black",
-        }}
-      >
-        <p
-          style={{
-            fontWeight: "bold",
-            margin: "5px 20px",
-            borderBottom: "2px solid black",
-          }}
-        >
-          Raids:
-        </p>
-        <ul
-          style={{
-            cursor: "pointer",
-            listStyle: "none",
-            margin: "0px",
-            padding: "0px 20px",
-          }}
-        >
-          {raidStore.raids.map((raid) => (
-            <li
-              key={raid.id}
-              className={`${classes.li}${
-                raid.id === raidStore.activeRaid.id ? " selected" : ""
-              }`}
-              onClick={() => raidStore.setActiveRaid(raid.id)}
-            >
-              {raid.title}
-            </li>
+  const getParseColor = (value) => {
+    let color = "black";
+    if (value === 100) {
+      color = "#F4D03F";
+    } else if (value >= 95 && value < 100) {
+      color = "#F39C12";
+    } else if (value >= 75 && value < 95) {
+      color = "#8E44AD";
+    } else if (value >= 50 && value < 75) {
+      color = "#3498DB";
+    } else if (value >= 25 && value < 50) {
+      color = "#2ECC71";
+    } else if (value >= 0 && value < 25) {
+      color = "#BDC3C7";
+    }
+    return color;
+  };
+
+  const generateTable = (data) => {
+    const bwl = raidStore.zones.find((zone) => zone.id === 1002);
+    // generate header row
+    const headers = ["Raider"];
+    bwl.encounters.forEach((encounter) => {
+      headers.push(encounter.name);
+    });
+
+    const rows = [];
+    data.forEach((raider) => {
+      const row = [raider.name];
+      bwl.encounters.forEach((encounter) => {
+        row.push(raider[encounter.id] ?? "-");
+      });
+      rows.push(row);
+    });
+
+    return (
+      <table style={{ borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            {headers.map((d) => (
+              <th
+                style={{
+                  padding: "5px",
+                  textAlign: "left",
+                  fontWeight: "bold",
+                  backgroundColor: "#5D6D7E",
+                  color: "white",
+                  border: "1px solid black",
+                }}
+              >
+                {d}
+              </th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {rows.map((row) => (
+            <tr>
+              {row.map((d) => (
+                <td style={{ padding: "0px 5px", border: "1px solid black", color: `${getParseColor(d)}` }}>{d}</td>
+              ))}
+            </tr>
           ))}
-        </ul>
-      </div>
-      <div style={{ padding: "5px 20px" }}>
-        <p className={classes.p}>
-          <b>Raid:</b> {raidStore.activeRaid.title}
-        </p>
-        <p className={classes.p}>
-          <b>Date:</b> {new Date(raidStore.activeRaid.start).toDateString()}
-        </p>
-        <p className={classes.p}>
-          <b>Instance:</b> {zoneStore.getZoneName(raidStore.activeRaid.zone)}
-        </p>
-        <p className={classes.p}>
-          <b>Owner:</b> {raidStore.activeRaid.owner}
-        </p>
-        <p className={classes.p}>
-          <b>Duration:</b> {raidStore.activeRaid.duration}
-        </p>
-        {raidStore.activeRaid.fightData && (
-          <p>Fights: {raidStore.activeRaid.fightData.fights.length}</p>
-        )}
-      </div>
+        </tbody>
+      </table>
+    );
+    console.log(headers);
+    console.log(rows);
+  };
+
+  return (
+    <div>
+      {raidStore.loading ? (
+        "Loading..."
+      ) : (
+        <div>
+          <h1>Median Bracket:</h1>
+          {generateTable(raidStore.medianBracket)}
+          <h1>Best Bracket:</h1>
+          {generateTable(raidStore.bestBracket)}
+          <h1>Median Overall:</h1>
+          {generateTable(raidStore.medianOverall)}
+          <h1>Best Overall:</h1>
+          {generateTable(raidStore.bestOverall)}
+        </div>
+      )}
     </div>
   );
 });

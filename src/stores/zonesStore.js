@@ -3,11 +3,11 @@ import request from "services/request";
 
 class ZonesStore {
   constructor() {
-    request({ url: "/zones" }).then((response) => {
-      Object.values(response).forEach((zone) => {
-        this.zones.push(zone);
-      });
-    });
+    // request({ url: "/zones" }).then((response) => {
+    //   Object.values(response).forEach((zone) => {
+    //     this.zones.push(zone);
+    //   });
+    // });
   }
 
   zones = [];
