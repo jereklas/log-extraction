@@ -24,6 +24,19 @@ class RaidsStore {
   medianOverall = [];
   bestOverall = [];
 
+  healers = [
+    "Aemon",
+    "Amonmin",
+    "Dabaslab",
+    "Doublebubble",
+    "Jaiden",
+    "Jerico",
+    "Naglepally",
+    "Rodney",
+    "Sarianne",
+    "Egstric",
+    "Erelis",
+  ];
   start;
   end;
 
@@ -97,15 +110,24 @@ class RaidsStore {
             console.log("raiders found:", raiders.length);
             for (let i = 0; i < raiders.length; i++) {
               const raider = raiders[i];
+              console.log();
               bracketRequests.push(
-                request({ url: `/parses/character/${raider}/Fairbanks/US`, params: { bracket: -1 } })
+                request({
+                  url: `/parses/character/${raider}/Fairbanks/US`,
+                  params: { bracket: -1, metric: this.healers.includes(raider) ? "hps" : "dps" },
+                })
               );
             }
 
             const overallRequests = [];
             for (let i = 0; i < raiders.length; i++) {
               const raider = raiders[i];
-              overallRequests.push(request({ url: `/parses/character/${raider}/Fairbanks/US` }));
+              overallRequests.push(
+                request({
+                  url: `/parses/character/${raider}/Fairbanks/US`,
+                  params: { metric: this.healers.includes(raider) ? "hps" : "dps" },
+                })
+              );
             }
 
             axios
@@ -116,9 +138,9 @@ class RaidsStore {
                     if (response[0]) {
                       const name = response[0].characterName;
                       this.parsesByRaider[name].bracket = {};
-                      const data = response.filter((parse) => parse.startTime > raidCutoff);
+                      // const data = response.filter((parse) => parse.startTime > raidCutoff);
 
-                      data.forEach((encounter) => {
+                      response.forEach((encounter) => {
                         if (!this.parsesByRaider[name].bracket[encounter.encounterID]) {
                           this.parsesByRaider[name].bracket[encounter.encounterID] = [];
                         }
@@ -142,9 +164,9 @@ class RaidsStore {
                     if (response[0]) {
                       const name = response[0].characterName;
                       this.parsesByRaider[name].overall = {};
-                      const data = response.filter((parse) => parse.startTime > raidCutoff);
+                      // const data = response.filter((parse) => parse.startTime > raidCutoff);
 
-                      data.forEach((encounter) => {
+                      response.forEach((encounter) => {
                         if (!this.parsesByRaider[name].overall[encounter.encounterID]) {
                           this.parsesByRaider[name].overall[encounter.encounterID] = [];
                         }
