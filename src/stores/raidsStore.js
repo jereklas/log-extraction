@@ -6,7 +6,6 @@ const weekInNanoSeconds = 7 * 24 * 60 * 60 * 1000;
 const Wednesday = 3;
 const Thursday = 4;
 const weeks = 4;
-const requestDelay = 350;
 
 class RaidsStore {
   raidsById = {};
@@ -47,6 +46,7 @@ class RaidsStore {
 
     this.start = Date.now();
     const raidCutoff = this.start - weeks * weekInNanoSeconds;
+    const parseCutoff = this.start - 6 * weekInNanoSeconds;
 
     request({ url: "/zones" }).then((response) => {
       this.zones = response;
@@ -138,9 +138,9 @@ class RaidsStore {
                     if (response[0]) {
                       const name = response[0].characterName;
                       this.parsesByRaider[name].bracket = {};
-                      // const data = response.filter((parse) => parse.startTime > raidCutoff);
+                      const data = response.filter((parse) => parse.startTime > parseCutoff);
 
-                      response.forEach((encounter) => {
+                      data.forEach((encounter) => {
                         if (!this.parsesByRaider[name].bracket[encounter.encounterID]) {
                           this.parsesByRaider[name].bracket[encounter.encounterID] = [];
                         }
@@ -164,9 +164,9 @@ class RaidsStore {
                     if (response[0]) {
                       const name = response[0].characterName;
                       this.parsesByRaider[name].overall = {};
-                      // const data = response.filter((parse) => parse.startTime > raidCutoff);
+                      const data = response.filter((parse) => parse.startTime > parseCutoff);
 
-                      response.forEach((encounter) => {
+                      data.forEach((encounter) => {
                         if (!this.parsesByRaider[name].overall[encounter.encounterID]) {
                           this.parsesByRaider[name].overall[encounter.encounterID] = [];
                         }
@@ -241,6 +241,7 @@ class RaidsStore {
               medianOverallRow[boss] = Number.isInteger(average) ? average : average.toFixed(2);
             });
           }
+
           this.bestBracket.push(bestBracketRow);
           this.medianBracket.push(medianBracketRow);
           this.bestOverall.push(bestOverallRow);

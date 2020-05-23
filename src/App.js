@@ -52,7 +52,7 @@ const App = observer(() => {
   const generateTable = (data) => {
     const bwl = raidStore.zones.find((zone) => zone.id === 1002);
     // generate header row
-    const headers = ["Raider"];
+    const headers = ["Raider", "Average"];
     bwl.encounters.forEach((encounter) => {
       headers.push(encounter.name);
     });
@@ -60,10 +60,26 @@ const App = observer(() => {
     const rows = [];
     data.forEach((raider) => {
       const row = [raider.name];
+      const encounters = [];
+      let avg = 0;
+      let count = 0;
       bwl.encounters.forEach((encounter) => {
-        row.push(raider[encounter.id] ?? "-");
+        const value = raider[encounter.id];
+        if (value) {
+          avg += Number(value);
+          count += 1;
+        }
+        encounters.push(value ?? "-");
+        // row.push(raider[encounter.id] ?? "-");
       });
-      rows.push(row);
+
+      if (avg !== 0) {
+        row.push((avg / count).toFixed(2));
+        encounters.forEach((encounter) => row.push(encounter));
+        rows.push(row);
+      }
+      // row.push(avg
+      // rows.push(row);
     });
 
     return (
