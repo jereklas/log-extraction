@@ -1,35 +1,9 @@
 import React from "react";
-import { makeStyles } from "@material-ui/styles";
 import { observer } from "mobx-react";
 import { useStores } from "hooks/useStores";
 
-const useStyles = makeStyles({
-  li: {
-    padding: "2px 0px",
-    "&.selected:hover": {
-      backgroundColor: "#85929E",
-    },
-    "&.selected:active": {
-      backgroundColor: "#5D6D7E",
-    },
-    "&.selected": {
-      backgroundColor: "#AEB6BF",
-    },
-    "&:hover": {
-      backgroundColor: "#EBEDEF",
-    },
-    "&:active": {
-      backgroundColor: "#D6DBDF",
-    },
-  },
-  p: {
-    margin: "2px 0px",
-  },
-});
-
 const App = observer(() => {
-  const classes = useStyles();
-  const { raidStore, zoneStore } = useStores();
+  const { raidStore } = useStores();
 
   const getParseColor = (value) => {
     let color = "black";
@@ -70,7 +44,6 @@ const App = observer(() => {
           count += 1;
         }
         encounters.push(value ?? "-");
-        // row.push(raider[encounter.id] ?? "-");
       });
 
       if (avg !== 0) {
@@ -78,8 +51,6 @@ const App = observer(() => {
         encounters.forEach((encounter) => row.push(encounter));
         rows.push(row);
       }
-      // row.push(avg
-      // rows.push(row);
     });
 
     return (
@@ -88,6 +59,7 @@ const App = observer(() => {
           <tr>
             {headers.map((d) => (
               <th
+                key={d}
                 style={{
                   padding: "5px",
                   textAlign: "left",
@@ -114,23 +86,31 @@ const App = observer(() => {
         </tbody>
       </table>
     );
-    console.log(headers);
-    console.log(rows);
   };
 
   return (
     <div>
       {raidStore.loading ? (
-        "Loading..."
+        "Loading... Depending on WarcraftLogs this can take 5 seconds or 1 minute. Be Patient :)"
+      ) : raidStore.error !== "" ? (
+        `ERROR: ${raidStore.error}`
       ) : (
         <div>
-          <h1>Median Bracket:</h1>
+          <div style={{ margin: "5px", width: "600px" }}>
+            This is currently finding everyone who has raided BWL in the past 4 weeks, and then taking their last 6
+            weeks of BWL parses to populate the tables. If someone only has 3 weeks of parse data, then their median is
+            based on the 3 weeks of data available instead of 6. I wasn't able to find a good way to determine when to
+            grab healing parses, so I currently have a list of healers. If we get new healers, or someone is no longer a
+            healer that list will have to be updated.
+          </div>
+          <br />
+          <p style={{ margin: "5px" }}>Median Bracket:</p>
           {generateTable(raidStore.medianBracket)}
-          <h1>Best Bracket:</h1>
+          <p>Best Bracket:</p>
           {generateTable(raidStore.bestBracket)}
-          <h1>Median Overall:</h1>
+          <p>Median Overall:</p>
           {generateTable(raidStore.medianOverall)}
-          <h1>Best Overall:</h1>
+          <p>Best Overall:</p>
           {generateTable(raidStore.bestOverall)}
         </div>
       )}

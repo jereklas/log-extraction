@@ -10,22 +10,21 @@ const client = axios.create({
  */
 const request = function (options) {
   const onSuccess = function (response) {
-    // console.debug("Request Successful!", response);
+    console.debug("Request Successful!", response);
     return response.data;
   };
 
   const onError = function (error) {
-    // console.error('Request Failed:', error.config);
+    console.error("Request Failed:", error.config);
 
-    // // log response data if it exists
-    // if (error.response) {
-    //   console.error('Status:',  error.response.status);
-    //   console.error('Data:',    error.response.data);
-    //   console.error('Headers:', error.response.headers);
-
-    // } else {
-    //   console.error('Error Message:', error.message);
-    // }
+    // log response data if it exists
+    if (error.response) {
+      console.error("Status:", error.response.status);
+      console.error("Data:", error.response.data);
+      console.error("Headers:", error.response.headers);
+    } else {
+      console.error("Error Message:", error.message);
+    }
 
     return Promise.reject(error.response || error.message);
   };
