@@ -91,18 +91,25 @@ const App = observer(() => {
   return (
     <div>
       {raidStore.loading ? (
-        "Loading... Depending on WarcraftLogs this can take 5 seconds or 1 minute. Be Patient :)"
+        <div>
+          <p style={{ margin: "5px" }}>Due to WarcraftLog's API request limit, loading will take about 2 minutes.</p>
+          {raidStore.timeRemaining > 0 && (
+            <p style={{ margin: "5px" }}>{`Estimated time remaining: ${raidStore.timeRemaining}s`}</p>
+          )}
+        </div>
       ) : raidStore.error !== "" ? (
         `ERROR: ${raidStore.error}`
       ) : (
         <div>
-          <div style={{ margin: "5px", width: "600px" }}>
+          <div style={{ margin: "5px", width: "800px" }}>
             This is currently finding everyone who has raided BWL in the past 4 weeks, and then taking their last 6
             weeks of BWL parses to populate the tables. If someone only has 3 weeks of parse data, then their median is
-            based on the 3 weeks of data available instead of 6. I wasn't able to find a good way to determine when to
-            grab healing parses, so I currently have a list of healers. If we get new healers, or someone is no longer a
-            healer that list will have to be updated.
+            based on the 3 weeks of data available instead of 6.
           </div>
+          <br />
+          <p style={{ margin: "5px" }}>{`Healing parse for the following people: ${raidStore.healers
+            .sort()
+            .join(", ")}`}</p>
           <br />
           <p style={{ margin: "5px" }}>Median Bracket:</p>
           {generateTable(raidStore.medianBracket)}

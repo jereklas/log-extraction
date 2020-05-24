@@ -6,6 +6,7 @@ const weekInNanoSeconds = 7 * 24 * 60 * 60 * 1000;
 const Wednesday = 3;
 const Thursday = 4;
 const weeks = 4;
+const requestDelay = 2000;
 
 class RaidsStore {
   raidsById = {};
@@ -18,6 +19,7 @@ class RaidsStore {
   loadingOverallParses = true;
   loadingZones = true;
   error = "";
+  timeRemaining = 0;
 
   medianBracket = [];
   bestBracket = [];
@@ -97,81 +99,97 @@ class RaidsStore {
           //send parse requests for bracket parses delayed between each other to prevent api lockout
           const bracketRequests = [];
           const raiders = Object.keys(this.parsesByRaider);
-          console.log("raiders found:", raiders.length);
+
+          const secondsRemaining = Math.floor(((raiders.length + 5) * requestDelay) / 1000);
+          this.timeRemaining = secondsRemaining;
+          for (let i = 0; i < secondsRemaining; i++) {
+            setTimeout(() => {
+              this.timeRemaining = this.timeRemaining - 1;
+            }, i * 1000);
+          }
+
           for (let i = 0; i < raiders.length; i++) {
-            const raider = raiders[i];
-            bracketRequests.push(
-              request({
-                url: `/parses/character/${raider}/Fairbanks/US`,
-                params: { bracket: -1, metric: this.healers.includes(raider) ? "hps" : "dps" },
-              })
-            );
+            setTimeout(() => {
+              const raider = raiders[i];
+              bracketRequests.push(
+                request({
+                  url: `/parses/character/${raider}/Fairbanks/US`,
+                  params: { bracket: -1, metric: this.healers.includes(raider) ? "hps" : "dps" },
+                })
+              );
+            }, requestDelay * i);
           }
 
           const overallRequests = [];
           for (let i = 0; i < raiders.length; i++) {
-            const raider = raiders[i];
-            overallRequests.push(
-              request({
-                url: `/parses/character/${raider}/Fairbanks/US`,
-                params: { metric: this.healers.includes(raider) ? "hps" : "dps" },
-              })
-            );
+            setTimeout(() => {
+              const raider = raiders[i];
+              overallRequests.push(
+                request({
+                  url: `/parses/character/${raider}/Fairbanks/US`,
+                  params: { metric: this.healers.includes(raider) ? "hps" : "dps" },
+                })
+              );
+            }, requestDelay * i);
           }
 
-          axios
-            .all(bracketRequests)
-            .then(
-              axios.spread((...bracketResponses) => {
-                bracketResponses.forEach((response) => {
-                  if (response[0]) {
-                    const name = response[0].characterName;
-                    this.parsesByRaider[name].bracket = {};
-                    const data = response.filter((parse) => parse.startTime > parseCutoff);
+          setTimeout(() => {
+            axios
+              .all(bracketRequests)
+              .then(
+                axios.spread((...bracketResponses) => {
+                  bracketResponses.forEach((response) => {
+                    if (response[0]) {
+                      const name = response[0].characterName;
+                      this.parsesByRaider[name].bracket = {};
+                      const data = response.filter((parse) => parse.startTime > parseCutoff);
 
-                    data.forEach((encounter) => {
-                      if (!this.parsesByRaider[name].bracket[encounter.encounterID]) {
-                        this.parsesByRaider[name].bracket[encounter.encounterID] = [];
-                      }
-                      this.parsesByRaider[name].bracket[encounter.encounterID].push(encounter.percentile);
-                    });
-                  }
-                });
+                      data.forEach((encounter) => {
+                        if (!this.parsesByRaider[name].bracket[encounter.encounterID]) {
+                          this.parsesByRaider[name].bracket[encounter.encounterID] = [];
+                        }
+                        this.parsesByRaider[name].bracket[encounter.encounterID].push(encounter.percentile);
+                      });
+                    }
+                  });
+                  this.loadingBracketParses = false;
+                })
+              )
+              .catch((errors) => {
+                this.error =
+                  "There were too many requests made recently to WarcraftLogs. Try again in like 10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
                 this.loadingBracketParses = false;
-              })
-            )
-            .catch((errors) => {
-              this.error =
-                "There were too many requests made recently to WarcraftLogs. Wait 5-10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
-              this.loadingBracketParses = false;
-            });
+              });
+          }, raiders.length * requestDelay);
 
-          axios
-            .all(overallRequests)
-            .then(
-              axios.spread((...overallResponses) => {
-                overallResponses.forEach((response) => {
-                  if (response[0]) {
-                    const name = response[0].characterName;
-                    this.parsesByRaider[name].overall = {};
-                    const data = response.filter((parse) => parse.startTime > parseCutoff);
+          setTimeout(() => {
+            axios
+              .all(overallRequests)
+              .then(
+                axios.spread((...overallResponses) => {
+                  overallResponses.forEach((response) => {
+                    if (response[0]) {
+                      const name = response[0].characterName;
+                      this.parsesByRaider[name].overall = {};
+                      const data = response.filter((parse) => parse.startTime > parseCutoff);
 
-                    data.forEach((encounter) => {
-                      if (!this.parsesByRaider[name].overall[encounter.encounterID]) {
-                        this.parsesByRaider[name].overall[encounter.encounterID] = [];
-                      }
-                      this.parsesByRaider[name].overall[encounter.encounterID].push(encounter.percentile);
-                    });
-                  }
-                });
+                      data.forEach((encounter) => {
+                        if (!this.parsesByRaider[name].overall[encounter.encounterID]) {
+                          this.parsesByRaider[name].overall[encounter.encounterID] = [];
+                        }
+                        this.parsesByRaider[name].overall[encounter.encounterID].push(encounter.percentile);
+                      });
+                    }
+                  });
+                  this.loadingOverallParses = false;
+                })
+              )
+              .catch((errors) => {
+                this.error =
+                  "There were too many requests made recently to WarcraftLogs. Try again in like 10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
                 this.loadingOverallParses = false;
-              })
-            )
-            .catch((errors) => {
-              this.error =
-                "There were too many requests made recently to WarcraftLogs. Wait 5-10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
-              this.loadingOverallParses = false;
-            });
+              });
+          }, (raiders.length + 2) * requestDelay);
         })
       );
     });
@@ -184,7 +202,8 @@ class RaidsStore {
         this.end = Date.now();
         console.log("done loading, time elapsed: ", this.end - this.start);
 
-        Object.keys(this.parsesByRaider).forEach((raider) => {
+        const raiders = Object.keys(this.parsesByRaider).sort();
+        raiders.forEach((raider) => {
           const bestBracketRow = { name: raider };
           const medianBracketRow = { name: raider };
           const bestOverallRow = { name: raider };
@@ -245,9 +264,11 @@ class RaidsStore {
 
 decorate(RaidsStore, {
   error: observable,
+  healers: observable,
   loading: observable,
   loadingBracketParses: observable,
   loadingOverallParses: observable,
+  timeRemaining: observable,
   loadingZones: observable,
   bestBracket: observable,
   medianBracket: observable,
