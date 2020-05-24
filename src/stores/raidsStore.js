@@ -100,7 +100,7 @@ class RaidsStore {
           const bracketRequests = [];
           const raiders = Object.keys(this.parsesByRaider);
 
-          const secondsRemaining = Math.floor(((raiders.length + 5) * requestDelay) / 1000);
+          const secondsRemaining = Math.floor(((raiders.length + 3) * requestDelay) / 1000);
           this.timeRemaining = secondsRemaining;
           for (let i = 0; i < secondsRemaining; i++) {
             setTimeout(() => {
