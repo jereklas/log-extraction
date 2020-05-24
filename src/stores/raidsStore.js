@@ -31,13 +31,14 @@ class RaidsStore {
     "Amonmin",
     "Dabaslab",
     "Doublebubble",
-    "Jaiden",
+    "Jaidan",
     "Jerico",
     "Naglepally",
     "Rodney",
     "Sarianne",
     "Egstric",
     "Erelis",
+    "Vaportrail",
   ];
   start;
   end;
