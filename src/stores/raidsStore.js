@@ -42,8 +42,8 @@ class RaidsStore {
   start;
 
   constructor() {
-    const previouslyGrabbedRaids = JSON.parse(localStorage.getItem("raids"));
-    this.parsesByRaider = JSON.parse(localStorage.getItem("parses")) ?? {};
+    const previouslyGrabbedRaids = JSON.parse(localStorage.getItem("previousRaids"));
+    this.parsesByRaider = JSON.parse(localStorage.getItem("parsesByRaider")) ?? {};
 
     this.start = Date.now();
     const raidCutoff = this.start - weeks * weekInNanoSeconds;
@@ -277,8 +277,8 @@ class RaidsStore {
         });
 
         this.loading = false;
-        localStorage.setItem("raids", JSON.stringify(this.raidsToGetFightsFor));
-        localStorage.setItem("parses", JSON.stringify(this.parsesByRaider));
+        localStorage.setItem("previousRaids", JSON.stringify(this.raidsToGetFightsFor));
+        localStorage.setItem("parsesByRaider", JSON.stringify(this.parsesByRaider));
       }
     }
   );
