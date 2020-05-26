@@ -40,10 +40,9 @@ class RaidsStore {
     "Vaportrail",
   ];
   start;
-  end;
 
   constructor() {
-    const previouslyGrabbedRaids = JSON.parse(localStorage.getItem("raids")) ?? [];
+    const previouslyGrabbedRaids = JSON.parse(localStorage.getItem("raids"));
     this.parsesByRaider = JSON.parse(localStorage.getItem("parses")) ?? {};
 
     this.start = Date.now();
@@ -74,13 +73,16 @@ class RaidsStore {
 
       let needToGetData = false;
 
-      this.raidsToGetFightsFor.forEach((id) => {
-        if (!previouslyGrabbedRaids.includes(id)) {
-          needToGetData = true;
-        }
-      });
+      if (!previouslyGrabbedRaids) {
+        needToGetData = true;
+      } else {
+        this.raidsToGetFightsFor.forEach((id) => {
+          if (!previouslyGrabbedRaids.includes(id)) {
+            needToGetData = true;
+          }
+        });
+      }
 
-      console.log(needToGetData);
       if (needToGetData) {
         const requests = [];
         this.raidsToGetFightsFor.forEach((raidId) => {
@@ -231,8 +233,7 @@ class RaidsStore {
     () => this.loadingBracketParses || this.loadingOverallParses || this.loadingZones,
     () => {
       if (!this.loadingBracketParses && !this.loadingOverallParses && !this.loadingZones) {
-        this.end = Date.now();
-        console.log("done loading, time elapsed: ", this.end - this.start);
+        console.log("done loading, time elapsed: ", Date.now() - this.start);
 
         const raiders = Object.keys(this.parsesByRaider).sort();
         raiders.forEach((raider) => {
