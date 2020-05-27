@@ -108,11 +108,11 @@ const App = observer(() => {
             .sort()
             .join(", ")}`}</p>
           <br />
-          <p style={{ margin: "5px" }}>Median Bracket:</p>
+          <p style={{ margin: "5px" }}>Median Bracket (last 6 weeks of parses):</p>
           {generateTable(raidStore.medianBracket)}
           <p>Best Bracket:</p>
           {generateTable(raidStore.bestBracket)}
-          <p>Median Overall:</p>
+          <p>Median Overall (last 6 weeks of parses):</p>
           {generateTable(raidStore.medianOverall)}
           <p>Best Overall:</p>
           {generateTable(raidStore.bestOverall)}
