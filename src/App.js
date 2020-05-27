@@ -39,7 +39,8 @@ const App = observer(() => {
       let count = 0;
       bwl.encounters.forEach((encounter) => {
         const value = raider[encounter.id];
-        if (value) {
+
+        if (value && value !== "-") {
           avg += Number(value);
           count += 1;
         }
@@ -101,13 +102,9 @@ const App = observer(() => {
         `ERROR: ${raidStore.error}`
       ) : (
         <div>
-          <div style={{ margin: "5px", width: "800px" }}>
-            This is currently finding everyone who has raided BWL in the past 4 weeks, and then taking their last 6
-            weeks of BWL parses to populate the tables. If someone only has 3 weeks of parse data, then their median is
-            based on the 3 weeks of data available instead of 6.
-          </div>
-          <br />
-          <p style={{ margin: "5px" }}>{`Healing parse for the following people: ${raidStore.healers
+          <p
+            style={{ margin: "5px" }}
+          >{`Druids, Paladins, and Priests have healing parses pulled. The following people are excluded from that: ${raidStore.healerExclusionList
             .sort()
             .join(", ")}`}</p>
           <br />

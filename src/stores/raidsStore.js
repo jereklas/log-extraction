@@ -25,25 +25,15 @@ class RaidsStore {
   medianOverall = [];
   bestOverall = [];
 
-  healers = [
-    "Aemon",
-    "Amonmin",
-    "Dabaslab",
-    "Doublebubble",
-    "Jaidan",
-    "Jerico",
-    "Naglepally",
-    "Rodney",
-    "Sarianne",
-    "Egstric",
-    "Erelis",
-    "Vaportrail",
-  ];
+  healerTypes = ["Priest", "Paladin", "Druid"];
+  healerExclusionList = ["Lightsaber", "Neku", "Taede"];
+  healers = [];
   start;
 
   constructor() {
     const previouslyGrabbedRaids = JSON.parse(localStorage.getItem("previousRaids"));
     this.parsesByRaider = JSON.parse(localStorage.getItem("parsesByRaider")) ?? {};
+    console.log(this.parsesByRaider["Zero"]);
 
     this.start = Date.now();
     const raidCutoff = this.start - weeks * weekInNanoSeconds;
@@ -102,6 +92,15 @@ class RaidsStore {
 
             fightsToGetRaidersFrom.forEach((fight) => {
               fight.exportedCharacters.forEach((char) => {
+                const friendlyData = fight.friendlies.find((e) => e.name === char.name);
+                console.log(friendlyData);
+                if (
+                  this.healerTypes.includes(friendlyData.type) &&
+                  !this.healerExclusionList.includes(friendlyData.name) &&
+                  !this.healers.includes(friendlyData.name)
+                ) {
+                  this.healers.push(friendlyData.name);
+                }
                 this.parsesByRaider[char.name] = {};
               });
             });
@@ -252,7 +251,11 @@ class RaidsStore {
               });
               average /= boss.parses.length;
               bestBracketRow[bossKey] = Number.isInteger(boss.best) ? boss.best : boss.best.toFixed(2);
-              medianBracketRow[bossKey] = Number.isInteger(average) ? average : average.toFixed(2);
+              medianBracketRow[bossKey] = Number.isNaN(average)
+                ? "-"
+                : Number.isInteger(average)
+                ? average
+                : average.toFixed(2);
             });
           }
 
@@ -266,7 +269,11 @@ class RaidsStore {
               });
               average /= boss.parses.length;
               bestOverallRow[bossKey] = Number.isInteger(boss.best) ? boss.best : boss.best.toFixed(2);
-              medianOverallRow[bossKey] = Number.isInteger(average) ? average : average.toFixed(2);
+              medianOverallRow[bossKey] = Number.isNaN(average)
+                ? "-"
+                : Number.isInteger(average)
+                ? average
+                : average.toFixed(2);
             });
           }
 
