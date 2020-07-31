@@ -3,9 +3,6 @@ import axios from "axios";
 import request from "services/request";
 
 const weekInNanoSeconds = 7 * 24 * 60 * 60 * 1000;
-const Wednesday = 3;
-const Thursday = 4;
-const weeks = 4;
 const requestDelay = 2000;
 
 class RaidsStore {
@@ -17,6 +14,7 @@ class RaidsStore {
   loadingBracketParses = true;
   loadingOverallParses = true;
   loadingZones = true;
+  needToGetData = false;
   error = "";
   timeRemaining = 0;
 
@@ -30,13 +28,79 @@ class RaidsStore {
   healers = [];
   start;
 
+  getZoneId(zoneName) {
+    return this.zones.find((z) => z.name === zoneName).id;
+  }
+
+  /**
+   * Checks local storage to see if last seen raid data is up to date.
+   * If it's up to date this returns false otherwise true.
+   */
+  isRaidDataOutOfDate = () => {
+    const lastSeenRaids = JSON.parse(localStorage.getItem("previousRaids"));
+    let needToGetData = false;
+
+    if (!lastSeenRaids && this.raidsToGetFightsFor.length > 0) {
+      needToGetData = true;
+    } else {
+      this.raidsToGetFightsFor.forEach((id) => {
+        if (!lastSeenRaids.includes(id)) {
+          needToGetData = true;
+        }
+      });
+    }
+
+    return needToGetData;
+  };
+
+  /**
+   * Finds all the raids that match the supplied zone that occured in the
+   * specified timeframe.
+   * @param {array<object>} raids - the collection of all raids
+   * @param {string} zone - raids matching this zone
+   * @param {number} timeFrameInWeeks - number of weeks to look for raid data in
+   */
+  findRaids = (raids, zone, timeFrameInWeeks) => {
+    return raids
+      .filter(
+        (raid) => raid.start > Date.now() - timeFrameInWeeks * weekInNanoSeconds && raid.zone === this.getZoneId(zone)
+      )
+      .map((raid) => raid.id);
+  };
+
+  /**
+   * Finds all the raiders from the collection of raid responses
+   * @param {array<object>} responses - array of multiple server responses
+   */
+  findRaiders = (responses) => {
+    const raidFights = [];
+    this.raids.forEach((raid) => {
+      responses.forEach((response) => {
+        if (raid.start === response.start && raid.title === response.title) {
+          raidFights.push(response);
+        }
+      });
+    });
+
+    raidFights.forEach((fight) => {
+      fight.exportedCharacters.forEach((char) => {
+        const friendlyData = fight.friendlies.find((e) => e.name === char.name);
+        if (
+          this.healerTypes.includes(friendlyData.type) &&
+          !this.healerExclusionList.includes(friendlyData.name) &&
+          !this.healers.includes(friendlyData.name)
+        ) {
+          this.healers.push(friendlyData.name);
+        }
+        this.parsesByRaider[char.name] = {};
+      });
+    });
+  };
+
   constructor() {
-    const previouslyGrabbedRaids = JSON.parse(localStorage.getItem("previousRaids"));
     this.parsesByRaider = JSON.parse(localStorage.getItem("parsesByRaider")) ?? {};
-    console.log(this.parsesByRaider["Zero"]);
 
     this.start = Date.now();
-    const raidCutoff = this.start - weeks * weekInNanoSeconds;
     const parseCutoff = this.start - 6 * weekInNanoSeconds;
 
     request({ url: "/zones" }).then((response) => {
@@ -44,36 +108,29 @@ class RaidsStore {
       this.loadingZones = false;
     });
 
-    request({
-      url: "/reports/guild/RIVAL/Fairbanks/US",
-    }).then((response) => {
-      const raidsById = {};
+    // once we have zone data
+    reaction(
+      () => this.loadingZones,
+      () => {
+        request({
+          url: "/reports/guild/RIVAL/Fairbanks/US",
+        }).then((response) => {
+          this.raids = response;
+          this.raidsToGetFightsFor = this.findRaids(response, "Temple of Ahn'Qiraj", 4);
+          this.needToGetData = this.isRaidDataOutOfDate();
 
-      Object.values(response).forEach((raid) => {
-        const duration = raid.end - raid.start;
-
-        if (duration > 0) {
-          const dayOfWeek = new Date(raid.start).getDay();
-          raidsById[raid.id] = raid;
-          if (raid.start > raidCutoff && (dayOfWeek === Wednesday || dayOfWeek === Thursday) && raid.zone === 1002) {
-            this.raidsToGetFightsFor.push(raid.id);
-          }
-        }
-      });
-
-      let needToGetData = false;
-
-      if (!previouslyGrabbedRaids) {
-        needToGetData = true;
-      } else {
-        this.raidsToGetFightsFor.forEach((id) => {
-          if (!previouslyGrabbedRaids.includes(id)) {
-            needToGetData = true;
+          if (!this.needToGetData) {
+            this.loadingBracketParses = false;
+            this.loadingOverallParses = false;
           }
         });
       }
+    );
 
-      if (needToGetData) {
+    // if raid data needs to be grabbed
+    reaction(
+      () => this.needToGetData,
+      () => {
         const requests = [];
         this.raidsToGetFightsFor.forEach((raidId) => {
           requests.push(request({ url: `/report/fights/${raidId}` }));
@@ -81,29 +138,7 @@ class RaidsStore {
 
         axios.all(requests).then(
           axios.spread((...responses) => {
-            const fightsToGetRaidersFrom = [];
-            Object.values(raidsById).forEach((raid) => {
-              responses.forEach((response) => {
-                if (raid.start === response.start && raid.title === response.title) {
-                  fightsToGetRaidersFrom.push(response);
-                }
-              });
-            });
-
-            fightsToGetRaidersFrom.forEach((fight) => {
-              fight.exportedCharacters.forEach((char) => {
-                const friendlyData = fight.friendlies.find((e) => e.name === char.name);
-                console.log(friendlyData);
-                if (
-                  this.healerTypes.includes(friendlyData.type) &&
-                  !this.healerExclusionList.includes(friendlyData.name) &&
-                  !this.healers.includes(friendlyData.name)
-                ) {
-                  this.healers.push(friendlyData.name);
-                }
-                this.parsesByRaider[char.name] = {};
-              });
-            });
+            this.findRaiders(responses);
 
             //send parse requests for bracket parses delayed between each other to prevent api lockout
             const bracketRequests = [];
@@ -111,6 +146,7 @@ class RaidsStore {
 
             const secondsRemaining = Math.floor(((raiders.length + 3) * requestDelay) / 1000);
             this.timeRemaining = secondsRemaining;
+
             for (let i = 0; i < secondsRemaining; i++) {
               setTimeout(() => {
                 this.timeRemaining = this.timeRemaining - 1;
@@ -123,7 +159,11 @@ class RaidsStore {
                 bracketRequests.push(
                   request({
                     url: `/parses/character/${raider}/Fairbanks/US`,
-                    params: { bracket: -1, metric: this.healers.includes(raider) ? "hps" : "dps" },
+                    params: {
+                      bracket: -1,
+                      zone: this.getZoneId("Temple of Ahn'Qiraj"),
+                      metric: this.healers.includes(raiders[0]) ? "hps" : "dps",
+                    },
                   })
                 );
               }, requestDelay * i);
@@ -136,6 +176,7 @@ class RaidsStore {
                 overallRequests.push(
                   request({
                     url: `/parses/character/${raider}/Fairbanks/US`,
+                    zone: this.getZoneId("Temple of Ahn'Qiraj"),
                     params: { metric: this.healers.includes(raider) ? "hps" : "dps" },
                   })
                 );
@@ -221,18 +262,15 @@ class RaidsStore {
             }, (raiders.length + 2) * requestDelay);
           })
         );
-      } else {
-        this.loadingBracketParses = false;
-        this.loadingOverallParses = false;
       }
-    });
+    );
   }
 
   updateWhenFinished = reaction(
     () => this.loadingBracketParses || this.loadingOverallParses || this.loadingZones,
     () => {
       if (!this.loadingBracketParses && !this.loadingOverallParses && !this.loadingZones) {
-        console.log("done loading, time elapsed: ", Date.now() - this.start);
+        console.log(`done loading, time elapsed: ${(Date.now() - this.start) / 1000}s`);
 
         const raiders = Object.keys(this.parsesByRaider).sort();
         raiders.forEach((raider) => {
@@ -297,13 +335,13 @@ decorate(RaidsStore, {
   loading: observable,
   loadingBracketParses: observable,
   loadingOverallParses: observable,
+  needToGetData: observable,
   timeRemaining: observable,
   loadingZones: observable,
   bestBracket: observable,
   medianBracket: observable,
   bestOverall: observable,
   medianOverall: observable,
-  zones: observable,
 });
 
 export default RaidsStore;
