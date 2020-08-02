@@ -10,6 +10,12 @@ const apiError =
   "There were too many requests made recently to WarcraftLogs. Try again in like 10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
 const partition = 2;
 
+const storageId = {
+  lastSeenRaids: "previousRaids-v2",
+  parsesByRaider: "parsesByRaider-v2",
+};
+Object.freeze(storageId);
+
 class RaidsStore {
   raidsToGetFightsFor = [];
   parsesByRaider = {};
@@ -50,7 +56,7 @@ class RaidsStore {
    * If it's up to date this returns false otherwise true.
    */
   isRaidDataOutOfDate = () => {
-    const lastSeenRaids = JSON.parse(localStorage.getItem("previousRaids"));
+    const lastSeenRaids = JSON.parse(localStorage.getItem(storageId.lastSeenRaids));
     let needToGetData = false;
 
     if (!lastSeenRaids && this.raidsToGetFightsFor.length > 0) {
@@ -155,7 +161,7 @@ class RaidsStore {
   };
 
   constructor() {
-    this.parsesByRaider = JSON.parse(localStorage.getItem("parsesByRaider")) ?? {};
+    this.parsesByRaider = JSON.parse(localStorage.getItem(storageId.parsesByRaider)) ?? {};
 
     this.start = Date.now();
 
@@ -304,8 +310,8 @@ class RaidsStore {
         });
 
         this.loading = false;
-        localStorage.setItem("previousRaids", JSON.stringify(this.raidsToGetFightsFor));
-        localStorage.setItem("parsesByRaider", JSON.stringify(this.parsesByRaider));
+        localStorage.setItem(storageId.lastSeenRaids, JSON.stringify(this.raidsToGetFightsFor));
+        localStorage.setItem(storageId.parsesByRaider, JSON.stringify(this.parsesByRaider));
       }
     }
   );
