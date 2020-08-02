@@ -4,6 +4,11 @@ import request from "services/request";
 
 const weekInNanoSeconds = 7 * 24 * 60 * 60 * 1000;
 const requestDelay = 2000;
+//const zoneToGatherParsesFrom = "Temple of Ahn'Qiraj";
+const zoneToGatherParsesFrom = "Blackwing Lair";
+const apiError =
+  "There were too many requests made recently to WarcraftLogs. Try again in like 10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
+const partition = 2;
 
 class RaidsStore {
   raidsToGetFightsFor = [];
@@ -30,6 +35,14 @@ class RaidsStore {
 
   getZoneId(zoneName) {
     return this.zones.find((z) => z.name === zoneName).id;
+  }
+
+  getZone() {
+    return this.zones.find((z) => z.name === zoneToGatherParsesFrom);
+  }
+
+  getPartitionName() {
+    return this.zones.find((z) => z.name === zoneToGatherParsesFrom).partitions[partition].name;
   }
 
   /**
@@ -97,11 +110,54 @@ class RaidsStore {
     });
   };
 
+  handleParseRequests = (requests, raiders, type, loadingVariableName) => {
+    const parseCutoff = this.start - 6 * weekInNanoSeconds;
+
+    setTimeout(() => {
+      axios
+        .all(requests)
+        .then(
+          axios.spread((...responses) => {
+            responses.forEach((response) => {
+              if (response[0]) {
+                const name = response[0].characterName;
+                this.parsesByRaider[name][type] = {};
+
+                response.forEach((encounter) => {
+                  const parses = this.parsesByRaider[name][type];
+                  if (!parses[encounter.encounterID]) {
+                    parses[encounter.encounterID] = {
+                      numberOfEncounters: 0,
+                      best: 0,
+                      parses: [],
+                    };
+                  }
+
+                  if (encounter.startTime > parseCutoff) {
+                    parses[encounter.encounterID].numberOfEncounters += 1;
+                    parses[encounter.encounterID].parses.push(encounter.percentile);
+                  }
+
+                  if (parses[encounter.encounterID].best < encounter.percentile) {
+                    parses[encounter.encounterID].best = encounter.percentile;
+                  }
+                });
+              }
+            });
+            this[loadingVariableName] = false;
+          })
+        )
+        .catch(() => {
+          this.error = apiError;
+          this[loadingVariableName] = false;
+        });
+    }, (raiders.length + 2) * requestDelay);
+  };
+
   constructor() {
     this.parsesByRaider = JSON.parse(localStorage.getItem("parsesByRaider")) ?? {};
 
     this.start = Date.now();
-    const parseCutoff = this.start - 6 * weekInNanoSeconds;
 
     request({ url: "/zones" }).then((response) => {
       this.zones = response;
@@ -116,7 +172,7 @@ class RaidsStore {
           url: "/reports/guild/RIVAL/Fairbanks/US",
         }).then((response) => {
           this.raids = response;
-          this.raidsToGetFightsFor = this.findRaids(response, "Temple of Ahn'Qiraj", 4);
+          this.raidsToGetFightsFor = this.findRaids(response, zoneToGatherParsesFrom, 4);
           this.needToGetData = this.isRaidDataOutOfDate();
 
           if (!this.needToGetData) {
@@ -161,7 +217,7 @@ class RaidsStore {
                     url: `/parses/character/${raider}/Fairbanks/US`,
                     params: {
                       bracket: -1,
-                      zone: this.getZoneId("Temple of Ahn'Qiraj"),
+                      zone: this.getZoneId(zoneToGatherParsesFrom),
                       metric: this.healers.includes(raiders[0]) ? "hps" : "dps",
                     },
                   })
@@ -176,90 +232,16 @@ class RaidsStore {
                 overallRequests.push(
                   request({
                     url: `/parses/character/${raider}/Fairbanks/US`,
-                    zone: this.getZoneId("Temple of Ahn'Qiraj"),
+                    zone: this.getZoneId(zoneToGatherParsesFrom),
+
                     params: { metric: this.healers.includes(raider) ? "hps" : "dps" },
                   })
                 );
               }, requestDelay * i);
             }
 
-            setTimeout(() => {
-              axios
-                .all(bracketRequests)
-                .then(
-                  axios.spread((...bracketResponses) => {
-                    bracketResponses.forEach((response) => {
-                      if (response[0]) {
-                        const name = response[0].characterName;
-                        this.parsesByRaider[name].bracket = {};
-
-                        response.forEach((encounter) => {
-                          const { bracket } = this.parsesByRaider[name];
-                          if (!bracket[encounter.encounterID]) {
-                            bracket[encounter.encounterID] = {
-                              best: 0,
-                              parses: [],
-                            };
-                          }
-
-                          if (encounter.startTime > parseCutoff) {
-                            bracket[encounter.encounterID].parses.push(encounter.percentile);
-                          }
-
-                          if (bracket[encounter.encounterID].best < encounter.percentile) {
-                            bracket[encounter.encounterID].best = encounter.percentile;
-                          }
-                        });
-                      }
-                    });
-                    this.loadingBracketParses = false;
-                  })
-                )
-                .catch((errors) => {
-                  this.error =
-                    "There were too many requests made recently to WarcraftLogs. Try again in like 10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
-                  this.loadingBracketParses = false;
-                });
-            }, raiders.length * requestDelay);
-
-            setTimeout(() => {
-              axios
-                .all(overallRequests)
-                .then(
-                  axios.spread((...overallResponses) => {
-                    overallResponses.forEach((response) => {
-                      if (response[0]) {
-                        const name = response[0].characterName;
-                        this.parsesByRaider[name].overall = {};
-
-                        response.forEach((encounter) => {
-                          const { overall } = this.parsesByRaider[name];
-                          if (!overall[encounter.encounterID]) {
-                            overall[encounter.encounterID] = {
-                              best: 0,
-                              parses: [],
-                            };
-                          }
-
-                          if (encounter.startTime > parseCutoff) {
-                            overall[encounter.encounterID].parses.push(encounter.percentile);
-                          }
-
-                          if (overall[encounter.encounterID].best < encounter.percentile) {
-                            overall[encounter.encounterID].best = encounter.percentile;
-                          }
-                        });
-                      }
-                    });
-                    this.loadingOverallParses = false;
-                  })
-                )
-                .catch((errors) => {
-                  this.error =
-                    "There were too many requests made recently to WarcraftLogs. Try again in like 10 minutes to allow my api key to becoming unlocked and then try re-loading the page.";
-                  this.loadingOverallParses = false;
-                });
-            }, (raiders.length + 2) * requestDelay);
+            this.handleParseRequests(bracketRequests, raiders, "bracket", "loadingBracketParses");
+            this.handleParseRequests(overallRequests, raiders, "overall", "loadingOverallParses");
           })
         );
       }

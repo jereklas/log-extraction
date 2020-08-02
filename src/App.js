@@ -24,10 +24,11 @@ const App = observer(() => {
   };
 
   const generateTable = (data) => {
-    const bwl = raidStore.zones.find((zone) => zone.id === 1002);
+    const zone = raidStore.getZone();
+
     // generate header row
     const headers = ["Raider", "Average"];
-    bwl.encounters.forEach((encounter) => {
+    zone.encounters.forEach((encounter) => {
       headers.push(encounter.name);
     });
 
@@ -37,25 +38,29 @@ const App = observer(() => {
       const encounters = [];
       let avg = 0;
       let count = 0;
-      bwl.encounters.forEach((encounter) => {
-        const value = raider[encounter.id];
+      zone.encounters.forEach((encounter) => {
+        const value = raider[encounter.id] ?? "-";
 
         if (value && value !== "-") {
           avg += Number(value);
           count += 1;
         }
-        encounters.push(value ?? "-");
+
+        encounters.push(value);
       });
 
       if (avg !== 0) {
         row.push((avg / count).toFixed(2));
-        encounters.forEach((encounter) => row.push(encounter));
-        rows.push(row);
+      } else {
+        row.push("-");
       }
+
+      encounters.forEach((encounter) => row.push(encounter));
+      rows.push(row);
     });
 
     return (
-      <table style={{ borderCollapse: "collapse" }}>
+      <table style={{ borderCollapse: "collapse", margin: "3px 5px" }}>
         <thead>
           <tr>
             {headers.map((d) => (
@@ -102,19 +107,35 @@ const App = observer(() => {
         `ERROR: ${raidStore.error}`
       ) : (
         <div>
-          <p
-            style={{ margin: "5px" }}
-          >{`Druids, Paladins, and Priests have healing parses pulled. The following people are excluded from that: ${raidStore.healerExclusionList
-            .sort()
-            .join(", ")}`}</p>
-          <br />
-          <p style={{ margin: "5px" }}>Median Bracket (last 6 weeks of parses):</p>
+          <p style={{ margin: "5px 0px 5px 5px" }}>
+            <b>Zone:</b>
+            {` ${raidStore.getZone().name}`}
+          </p>
+          <p style={{ margin: "0px 5px" }}>
+            <b>Partition:</b>
+            {` ${raidStore.getPartitionName()}`}
+          </p>
+          <p style={{ margin: "5px" }}>
+            <b>Details:</b>
+            {` Druids, Paladins, and Priests have healing parses pulled. The following people are excluded from that: ${raidStore.healerExclusionList
+              .sort()
+              .join(", ")}`}
+          </p>
+          <p style={{ margin: "15px 5px 7px 5px" }}>
+            <b>Median Bracket:</b>
+          </p>
           {generateTable(raidStore.medianBracket)}
-          <p>Best Bracket:</p>
+          <p style={{ margin: "7px 5px" }}>
+            <b>Best Bracket:</b>
+          </p>
           {generateTable(raidStore.bestBracket)}
-          <p>Median Overall (last 6 weeks of parses):</p>
+          <p style={{ margin: "7px 5px" }}>
+            <b>Median Overall:</b>
+          </p>
           {generateTable(raidStore.medianOverall)}
-          <p>Best Overall:</p>
+          <p style={{ margin: "7px 5px" }}>
+            <b>Best Overall:</b>
+          </p>
           {generateTable(raidStore.bestOverall)}
         </div>
       )}
