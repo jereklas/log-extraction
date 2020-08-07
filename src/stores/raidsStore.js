@@ -11,8 +11,8 @@ const apiError =
 const partition = 2;
 
 const storageId = {
-  lastSeenRaids: "previousRaids-v2",
-  parsesByRaider: "parsesByRaider-v2",
+  lastSeenRaids: "previousRaids-v3",
+  parsesByRaider: "parsesByRaider-v3",
 };
 Object.freeze(storageId);
 
@@ -202,19 +202,17 @@ class RaidsStore {
           axios.spread((...responses) => {
             this.findRaiders(responses);
 
-            //send parse requests for bracket parses delayed between each other to prevent api lockout
-            const bracketRequests = [];
             const raiders = Object.keys(this.parsesByRaider);
 
             const secondsRemaining = Math.floor(((raiders.length + 3) * requestDelay) / 1000);
             this.timeRemaining = secondsRemaining;
-
             for (let i = 0; i < secondsRemaining; i++) {
               setTimeout(() => {
                 this.timeRemaining = this.timeRemaining - 1;
               }, i * 1000);
             }
 
+            const bracketRequests = [];
             for (let i = 0; i < raiders.length; i++) {
               setTimeout(() => {
                 const raider = raiders[i];
@@ -224,7 +222,7 @@ class RaidsStore {
                     params: {
                       bracket: -1,
                       zone: this.getZoneId(zoneToGatherParsesFrom),
-                      metric: this.healers.includes(raiders[0]) ? "hps" : "dps",
+                      metric: this.healers.includes(raider) ? "hps" : "dps",
                     },
                   })
                 );
@@ -238,9 +236,10 @@ class RaidsStore {
                 overallRequests.push(
                   request({
                     url: `/parses/character/${raider}/Fairbanks/US`,
-                    zone: this.getZoneId(zoneToGatherParsesFrom),
-
-                    params: { metric: this.healers.includes(raider) ? "hps" : "dps" },
+                    params: {
+                      zone: this.getZoneId(zoneToGatherParsesFrom),
+                      metric: this.healers.includes(raider) ? "hps" : "dps",
+                    },
                   })
                 );
               }, requestDelay * i);
